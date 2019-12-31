@@ -8,6 +8,7 @@ import subprocess
 
 # Separate run method to call judger run
 
+# TODO: Move all constants to another file
 # NOTE: path is /testcases/problem_id/testcase_id/{in.txt | out.txt}
 # NOTE: The folder for all the outputs will be tmp.
 
@@ -18,7 +19,7 @@ def _run(instance, t):
     return instance._grade(t)
 
 class Grader(object):
-    def __init__(self, src, config, max_memory, max_runtime, problem_id, work_dir):
+    def __init__(self, src, config, max_memory, max_runtime, problem_id, work_dir, job):
         self.src = os.path.join(work_dir, src)
         self.work_dir = work_dir
         self.testcase_dir = os.path.join(TESTCASE_PATH, problem_id)
@@ -29,6 +30,10 @@ class Grader(object):
 
         self.exe_path = self._compile()
         self.pool = Pool(processes=psutil.cpu_count())
+
+        self.job = job
+        self.count = 0
+        self.max_count = 0
 
     def _compile(self):
         config = self.config["compile"]
@@ -52,6 +57,7 @@ class Grader(object):
                              env=["PATH=" + os.getenv("PATH")],
                              log_path="judger.log",
                              seccomp_rule_name=None,
+                             # TODO: Be sure to setup correct user ID since executing code on root is very dangerous
                              uid=0,
                              gid=0)
         
@@ -67,7 +73,13 @@ class Grader(object):
         ret = []
         master = []
 
-        for t in next(os.walk(self.testcase_dir))[1]:
+        testcases = next(os.walk(self.testcase_dir))[1]
+
+        self.max_count = len(testcases)
+        self.job.meta["progress"] = f"{self.count}/{self.max_count}"
+        self.job.save_meta()
+
+        for t in testcases:
             master.append(self.pool.apply_async(_run, (self, t)))
         
         self.pool.close()
@@ -80,8 +92,7 @@ class Grader(object):
 
     def _grade(self, testcase_id):
         config = self.config["run"]
-        command = config["command"].format(exe_path=self.exe_path)
-        command = command.split(" ")
+        command = config["command"].format(exe_path=self.exe_path).split(" ")
 
         input_path = os.path.join(self.testcase_dir, f"{testcase_id}/in.txt")
         output_path = os.path.join(self.work_dir, f"{testcase_id}.txt")
@@ -97,6 +108,8 @@ class Grader(object):
                                 env = ["PATH=" + os.environ.get("PATH", "")] + config.get("env", []),
                                 log_path = "judger.log",
                                 seccomp_rule_name = config["seccomp_rule"],
+
+                                # NOTE: Again UID
                                 uid = 0,
                                 gid = 0,
                                 memory_limit_check_only = config.get("memory_limit_check_only", 0),
@@ -114,6 +127,10 @@ class Grader(object):
             else:
                 result["result"] = _judger.RESULT_WRONG_ANSWER
         
+        self.count += 1
+        self.job.meta["progress"] = f"{self.count}/{self.max_count}"
+        self.job.save_meta()
+
         return result
 
     def _check_diff(self, testcase_id, output_path):

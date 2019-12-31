@@ -2,20 +2,20 @@ import os
 import json
 import shutil
 
-from flask import Flask, request, Response
-from grader.grader import Grader
-import grader.configurations as configurations
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 
-app = Flask(__name__)
+from grader.grader import Grader
+from grader.configurations import Configurations
+from rq import get_current_job
+
+from models import Submission
+
 OUTPUT_PATH = "/home/moxis/Documents/Github/OJ/STAOJ/JudgeServer/tmp"
 
-lang_config = {
-    "py3": configurations.py3_lang_config,
-    "py2": configurations.py2_lang_config,
-    "java": configurations.java_lang_config,
-    "cpp": configurations.cpp_lang_config,
-    "c": configurations.c_lang_config
-}
+engine = create_engine('sqlite:///:memory:', echo=True)
+Session = sessionmaker(bind=engine)
+session = Session()
 
 # Every app will be ran in their own submission id folder
 class CreateEnvironment(object):
@@ -32,33 +32,33 @@ class CreateEnvironment(object):
     def __exit__(self, a, b, c):
         shutil.rmtree(self.work_dir)
 
-"""
-submission_id
-language
-max_memory
-max_runtime
-problem_id
-"""
-@app.route("/api/evaluate", methods=["POST"])
-def evaluate_submission():
-    data = request.json
+def evaluate_submission(submission_id, language, code, memory_limit, time_limit, problem_id):
+    job = get_current_job()
 
-    with CreateEnvironment(data["submission_id"]) as path:
-        config = lang_config[data["language"]]
+    with CreateEnvironment(str(submission_id)) as path:
+        # NOTE: Need to handle cases if config is null <rare but can happen>
+
+        config = Configurations.get_config(language)
         src = os.path.join(path, config["compile"]["src_name"])
 
         with open(src, "w+") as f:
-            f.write(data["code"])
+            f.write(code)
 
         try:
-            g = Grader(src, config, data["max_memory"], data["max_runtime"], data["problem_id"], path)
+            g = Grader(src, config, memory_limit, time_limit, problem_id, path, job)
         except Exception:
-            return Response(json.dumps({"data": "Compilation Error"}), mimetype='application/json')
+            # TODO: Do something for compilation error
+            pass
         else:
             result = g.grade_all()
 
-    
-    return Response(json.dumps({"data": result}), mimetype='application/json')
+    submission = Submission.query.get(submission_id)
+    submission.testcases = json.dumps({"data": result})
 
-if __name__ == "__main__":
-    app.run(debug=False)
+    if not any([i["result"] for i in result]):
+        submission.result = 0
+    else:
+        submission.result = max([i["result"] for i in result if i["result"] != 0])
+    
+    # TODO: perhaps add line to delete the task from the database
+    session.commit()
