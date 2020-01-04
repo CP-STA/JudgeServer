@@ -3,7 +3,8 @@ import json
 import shutil
 
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.sql import text
+# from sqlalchemy.orm import sessionmaker
 
 from grader.grader import Grader
 from grader.configurations import Configurations
@@ -13,9 +14,10 @@ from models import Submission
 
 OUTPUT_PATH = "/home/moxis/Documents/Github/OJ/STAOJ/JudgeServer/tmp"
 
-engine = create_engine('sqlite:///:memory:', echo=True)
-Session = sessionmaker(bind=engine)
-session = Session()
+basedir = os.path.abspath(os.path.dirname(__file__))
+engine = create_engine('sqlite:///' + os.path.join(basedir, 'app.db'), echo=True)
+'''Session = sessionmaker(bind=engine)
+session = Session()'''
 
 # Every app will be ran in their own submission id folder
 class CreateEnvironment(object):
@@ -32,7 +34,7 @@ class CreateEnvironment(object):
     def __exit__(self, a, b, c):
         shutil.rmtree(self.work_dir)
 
-def evaluate_submission(submission_id, language, code, memory_limit, time_limit, problem_id):
+def evaluate_submission(submission_id, language, code, memory_limit, time_limit, problem_id, registration_id, points):
     job = get_current_job()
 
     with CreateEnvironment(str(submission_id)) as path:
@@ -47,12 +49,12 @@ def evaluate_submission(submission_id, language, code, memory_limit, time_limit,
         try:
             g = Grader(src, config, memory_limit, time_limit, problem_id, path, job)
         except Exception:
-            # TODO: Do something for compilation error
-            pass
+            # 6 - Compilation Error
+            result = [{"result": 6}]
         else:
             result = g.grade_all()
 
-    submission = Submission.query.get(submission_id)
+    '''submission = session.query(Submission).get(submission_id)
     submission.testcases = json.dumps({"data": result})
 
     if not any([i["result"] for i in result]):
@@ -60,5 +62,25 @@ def evaluate_submission(submission_id, language, code, memory_limit, time_limit,
     else:
         submission.result = max([i["result"] for i in result if i["result"] != 0])
     
-    # TODO: perhaps add line to delete the task from the database
-    session.commit()
+    session.commit()'''
+
+    data = {
+        "submission_id": submission_id,
+        "progress": f"{g.max_count}/{g.max_count}",
+        "testcases": json.dumps({"data": result})
+    }
+
+    if not(any([i["result"] for i in result])):
+        data["status"] = 0
+    else:
+        data["status"] = max([i["result"] for i in result if i["result"] != 0])
+
+    query = text("UPDATE submission SET testcases = :testcases, status = :status, progress = :progress WHERE submission.id = :submission_id")
+
+    with engine.connect() as con:
+        con.execute(query, **data)
+
+        # Increasing score if it is an accepted solution and belongs in a contest
+        if data["status"] == 0 and registration_id is not None:
+            query = text("UPDATE submission SET score = score + :points WHERE registration.id = :registration_id")
+            con.execute(query, **{"points": points, "registration_id": registration_id})
