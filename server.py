@@ -10,19 +10,14 @@ from grader.grader import Grader
 from grader.configurations import Configurations
 from rq import get_current_job
 
-from models import Submission
-
 OUTPUT_PATH = "/home/moxis/Documents/Github/OJ/STAOJ/JudgeServer/tmp"
 
 basedir = os.path.abspath(os.path.dirname(__file__))
-engine = create_engine('sqlite:///' + os.path.join(basedir, 'app.db'), echo=True)
-'''Session = sessionmaker(bind=engine)
-session = Session()'''
+engine = create_engine('sqlite:////home/moxis/Documents/Github/OJ/STAOJ/MainServer/app.db', echo=True)
 
-# Every app will be ran in their own submission id folder
 class CreateEnvironment(object):
     def __init__(self, submission_id):
-        self.work_dir = os.path.join(OUTPUT_PATH, submission_id)
+        self.work_dir = os.path.join(OUTPUT_PATH, str(submission_id))
     
     def __enter__(self):
         if os.path.exists(self.work_dir):
@@ -49,38 +44,32 @@ def evaluate_submission(submission_id, language, code, memory_limit, time_limit,
         try:
             g = Grader(src, config, memory_limit, time_limit, problem_id, path, job)
         except Exception:
-            # 6 - Compilation Error
             result = [{"result": 6}]
+
+            data = {
+                "submission_id": submission_id,
+                "progress": "0/0",
+                "testcases": ""
+            }
         else:
             result = g.grade_all()
 
-    '''submission = session.query(Submission).get(submission_id)
-    submission.testcases = json.dumps({"data": result})
+            data = {
+                "submission_id": submission_id,
+                "progress": f"{g.max_count}/{g.max_count}",
+                "testcases": json.dumps({"data": result})
+            }
 
-    if not any([i["result"] for i in result]):
-        submission.result = 0
-    else:
-        submission.result = max([i["result"] for i in result if i["result"] != 0])
-    
-    session.commit()'''
+        if not(any([i["result"] for i in result])):
+            data["status"] = 0
+        else:
+            data["status"] = max([i["result"] for i in result if i["result"] != 0])
 
-    data = {
-        "submission_id": submission_id,
-        "progress": f"{g.max_count}/{g.max_count}",
-        "testcases": json.dumps({"data": result})
-    }
+        query = text("UPDATE submission SET testcases = :testcases, status = :status, progress = :progress WHERE submission.id = :submission_id")
 
-    if not(any([i["result"] for i in result])):
-        data["status"] = 0
-    else:
-        data["status"] = max([i["result"] for i in result if i["result"] != 0])
+        with engine.connect() as con:
+            con.execute(query, **data)
 
-    query = text("UPDATE submission SET testcases = :testcases, status = :status, progress = :progress WHERE submission.id = :submission_id")
-
-    with engine.connect() as con:
-        con.execute(query, **data)
-
-        # Increasing score if it is an accepted solution and belongs in a contest
-        if data["status"] == 0 and registration_id is not None:
-            query = text("UPDATE submission SET score = score + :points WHERE registration.id = :registration_id")
-            con.execute(query, **{"points": points, "registration_id": registration_id})
+            if data["status"] == 0 and registration_id is not None:
+                query = text("UPDATE submission SET score = score + :points WHERE registration.id = :registration_id")
+                con.execute(query, **{"points": points, "registration_id": registration_id})

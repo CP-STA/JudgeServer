@@ -89,4 +89,4 @@ class Configurations:
 
     @classmethod
     def get_config(cls, language):
-        return lang_config.get(language)
+        return cls.lang_config.get(language)

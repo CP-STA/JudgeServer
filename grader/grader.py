@@ -22,14 +22,14 @@ class Grader(object):
     def __init__(self, src, config, max_memory, max_runtime, problem_id, work_dir, job):
         self.src = os.path.join(work_dir, src)
         self.work_dir = work_dir
-        self.testcase_dir = os.path.join(TESTCASE_PATH, problem_id)
+        self.testcase_dir = os.path.join(TESTCASE_PATH, str(problem_id))
 
         self.config = config
         self.max_memory = max_memory
         self.max_runtime = max_runtime
 
         self.exe_path = self._compile()
-        self.pool = Pool(processes=psutil.cpu_count())
+        self.pool = Pool(processes=1)
 
         self.job = job
         self.count = 0
@@ -80,17 +80,14 @@ class Grader(object):
         self.job.save_meta()
 
         for t in testcases:
-            master.append(self.pool.apply_async(_run, (self, t)))
+            ret.append(self._grade(t))
         
-        self.pool.close()
-        self.pool.join()
-
-        for slave in master:
-            ret.append(slave.get())
-
         return ret
 
     def _grade(self, testcase_id):
+        import time
+        time.sleep(5)
+        
         config = self.config["run"]
         command = config["command"].format(exe_path=self.exe_path).split(" ")
 
