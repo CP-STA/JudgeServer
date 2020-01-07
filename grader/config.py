@@ -1,13 +1,31 @@
 # coding=utf-8
 from __future__ import unicode_literals
 
+import os
+import pwd
+import grp
+
+RESULT_COMPILATION_ERROR = -3
+
+DATABASE_URI = "sqlite:////home/moxis/Documents/Github/OJ/STAOJ/MainServer/app.db"
+
+TESTCASE_PATH = "/home/moxis/Documents/Github/OJ/STAOJ/JudgeServer/testcases"
+OUTPUT_PATH = "/home/moxis/Documents/Github/OJ/STAOJ/JudgeServer/tmp"
+
+# RUN_USER_UID = pwd.getpwnam("code").pw_uid
+# RUN_GROUP_GID = grp.getgrnam("code").gr_gid
+
+# COMPILER_USER_UID = pwd.getpwnam("compiler").pw_uid
+# COMPILER_GROUP_GID = grp.getgrnam("compiler").gr_gid
+
 default_env = ["LANG=en_US.UTF-8", "LANGUAGE=en_US:en", "LC_ALL=en_US.UTF-8"]
 default_memory = 256 * 1024 * 1024
 default_cpu_time = 3000
 default_real_time = 5000
 
+""" Code compilation configurations for different languages """
 class Configurations:
-    lang_config = {
+    configurations = {
         "python3": {
             "compile": {
                 "src_name": "solution.py",
@@ -89,4 +107,4 @@ class Configurations:
 
     @classmethod
     def get_config(cls, language):
-        return cls.lang_config.get(language)
+        return cls.configurations.get(language)

@@ -4,17 +4,27 @@ import shutil
 
 from sqlalchemy import create_engine
 from sqlalchemy.sql import text
-# from sqlalchemy.orm import sessionmaker
 
 from grader.grader import Grader
-from grader.configurations import Configurations
+from grader.config import Configurations, OUTPUT_PATH, DATABASE_URI
 from rq import get_current_job
 
-OUTPUT_PATH = "/home/moxis/Documents/Github/OJ/STAOJ/JudgeServer/tmp"
-
 basedir = os.path.abspath(os.path.dirname(__file__))
-engine = create_engine('sqlite:////home/moxis/Documents/Github/OJ/STAOJ/MainServer/app.db', echo=True)
+engine = create_engine(DATABASE_URI, echo=True)
 
+"""
+    RESULT_SUCCESS = 0
+    RESULT_COMPILATION_ERROR = -3
+    RESULT_PENDING = -2
+    RESULT_WRONG_ANSWER = -1
+    RESULT_CPU_TIME_LIMIT_EXCEEDED = 1
+    RESULT_REAL_TIME_LIMIT_EXCEEDED = 2
+    RESULT_MEMORY_LIMIT_EXCEEDED = 3
+    RESULT_RUNTIME_ERROR = 4
+    RESULT_SYSTEM_ERROR = 5
+"""
+
+""" Creates all the necessary directories to compile and execute the submitted code """
 class CreateEnvironment(object):
     def __init__(self, submission_id):
         self.work_dir = os.path.join(OUTPUT_PATH, str(submission_id))
@@ -33,43 +43,39 @@ def evaluate_submission(submission_id, language, code, memory_limit, time_limit,
     job = get_current_job()
 
     with CreateEnvironment(str(submission_id)) as path:
-        # NOTE: Need to handle cases if config is null <rare but can happen>
-
         config = Configurations.get_config(language)
         src = os.path.join(path, config["compile"]["src_name"])
 
+        # Saves submitted code to file
         with open(src, "w+") as f:
             f.write(code)
 
-        try:
-            g = Grader(src, config, memory_limit, time_limit, problem_id, path, job)
-        except Exception:
-            result = [{"result": 6}]
+        grader = Grader(src, config, memory_limit, time_limit, problem_id, path, job)
+        result = grader.grade_all()
 
-            data = {
-                "submission_id": submission_id,
-                "progress": "0/0",
-                "testcases": ""
-            }
-        else:
-            result = g.grade_all()
-
-            data = {
-                "submission_id": submission_id,
-                "progress": f"{g.max_count}/{g.max_count}",
-                "testcases": json.dumps({"data": result})
-            }
-
-        if not(any([i["result"] for i in result])):
+        data = {
+            "submission_id": submission_id,
+            "progress": f"{grader.max_count}/{grader.max_count}",
+            "testcases": json.dumps({"data": result})
+        }
+            
+        if not any([i["result"] for i in result]):
             data["status"] = 0
         else:
             data["status"] = max([i["result"] for i in result if i["result"] != 0])
 
-        query = text("UPDATE submission SET testcases = :testcases, status = :status, progress = :progress WHERE submission.id = :submission_id")
+        query = text("""UPDATE submission SET 
+                        testcases = :testcases, status = :status, progress = :progress 
+                        WHERE submission.id = :submission_id""")
 
         with engine.connect() as con:
+            # Update the submission with the final result
             con.execute(query, **data)
 
+            # Update contest scores if there exists a registration
             if data["status"] == 0 and registration_id is not None:
-                query = text("UPDATE submission SET score = score + :points WHERE registration.id = :registration_id")
+                query = text("""UPDATE submission SET 
+                                score = score + :points 
+                                WHERE registration.id = :registration_id""")
+
                 con.execute(query, **{"points": points, "registration_id": registration_id})
