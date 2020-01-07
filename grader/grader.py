@@ -67,7 +67,7 @@ class Grader(object):
         if result["result"] == _judger.RESULT_SUCCESS:
             return exe_path
         else:
-            raise None # Implies compilation error
+            return None # Implies compilation error
 
     def grade_all(self):
         if self.exe_path is None:
