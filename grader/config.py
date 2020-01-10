@@ -7,10 +7,10 @@ import grp
 
 RESULT_COMPILATION_ERROR = -3
 
-DATABASE_URI = "sqlite:////home/moxis/Documents/Github/OJ/STAOJ/MainServer/app.db"
+DATABASE_URI = "sqlite:////home/ec2-user/MainServer/app.db"
 
-TESTCASE_PATH = "/home/moxis/Documents/Github/OJ/STAOJ/JudgeServer/testcases"
-OUTPUT_PATH = "/home/moxis/Documents/Github/OJ/STAOJ/JudgeServer/tmp"
+TESTCASE_PATH = "/home/ec2-user/JudgeServer/testcases"
+OUTPUT_PATH = "/home/ec2-user/JudgeServer/tmp"
 
 # RUN_USER_UID = pwd.getpwnam("code").pw_uid
 # RUN_GROUP_GID = grp.getgrnam("code").gr_gid
