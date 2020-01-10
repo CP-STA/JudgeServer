@@ -74,7 +74,7 @@ def evaluate_submission(submission_id, language, code, memory_limit, time_limit,
 
             # Update contest scores if there exists a registration
             if data["status"] == 0 and registration_id is not None:
-                query = text("""UPDATE submission SET 
+                query = text("""UPDATE registration SET 
                                 score = score + :points 
                                 WHERE registration.id = :registration_id""")
 
