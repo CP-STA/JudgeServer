@@ -87,7 +87,7 @@ class Grader(object):
 
     def _grade(self, testcase_id):
         config = self.config["run"]
-        command = config["command"].format(exe_path=self.exe_path).split(" ")
+        command = config["command"].format(exe_path=self.exe_path, exe_dir=self.work_dir).split(" ")
 
         input_path = os.path.join(self.testcase_dir, f"{testcase_id}/in.txt")
         output_path = os.path.join(self.work_dir, f"{testcase_id}.txt")
