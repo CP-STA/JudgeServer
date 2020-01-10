@@ -64,18 +64,26 @@ def evaluate_submission(submission_id, language, code, memory_limit, time_limit,
         else:
             data["status"] = max([i["result"] for i in result if i["result"] != 0])
 
-        query = text("""UPDATE submission SET 
-                        testcases = :testcases, status = :status, progress = :progress 
-                        WHERE submission.id = :submission_id""")
-
         with engine.connect() as con:
+            query = text("""UPDATE submission SET 
+                            testcases = :testcases, status = :status, progress = :progress 
+                            WHERE submission.id = :submission_id""")
+
             # Update the submission with the final result
             con.execute(query, **data)
 
             # Update contest scores if there exists a registration
             if data["status"] == 0 and registration_id is not None:
-                query = text("""UPDATE submission SET 
+                query = text("""UPDATE registration SET 
                                 score = score + :points 
                                 WHERE registration.id = :registration_id""")
 
                 con.execute(query, **{"points": points, "registration_id": registration_id})
+
+
+                # Updating the last submission timestamp
+                query = text("""UPDATE registration SET 
+                                last_submission = (SELECT timestamp FROM submission WHERE submission.id = :submission_id)
+                                WHERE registration.id = :registration_id""")
+                
+                con.execute(query, **{"submission_id": submission_id, "registration_id": registration_id})
