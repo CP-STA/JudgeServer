@@ -1,0 +1,28 @@
+version: "3"
+services:
+    redis:
+        image: redis
+        container_name: redis
+        restart: always
+        ports:
+            - 6379:6379
+    
+    autograder:
+        build: .
+        container_name: autograder
+        restart: always
+        read_only: true
+        cap_drop:
+            - SETPCAP
+            - MKNOD
+            - NET_BIND_SERVICE
+            - SYS_CHROOT
+            - SETFCAP
+            - FSETID
+        depends_on: 
+            - redis
+        links:
+            - redis:redis-server
+        environment:
+            - LC_ALL=C.UTF-8
+            - LANG=C.UTF-8
