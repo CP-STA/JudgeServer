@@ -6,7 +6,7 @@ services:
         restart: always
         ports:
             - 6379:6379
-    
+
     autograder:
         build: .
         container_name: autograder
@@ -23,6 +23,9 @@ services:
             - redis
         links:
             - redis:redis-server
+        external_links:
+            - postgresql
         environment:
             - LC_ALL=C.UTF-8
             - LANG=C.UTF-8
+            - DATABASE_URL=postgresql://postgres:password@postgres/postgres
