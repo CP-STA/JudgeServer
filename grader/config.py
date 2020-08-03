@@ -10,7 +10,7 @@ RESULT_COMPILATION_ERROR = -3
 DATABASE_URI = os.environ.get('DATABASE_URL') or 'sqlite:///' + os.path.join(basedir, 'app.db')
 
 TESTCASE_PATH = "testcases"
-OUTPUT_PATH = "tmp"
+OUTPUT_PATH = "/tmp"
 
 # RUN_USER_UID = pwd.getpwnam("code").pw_uid
 # RUN_GROUP_GID = grp.getgrnam("code").gr_gid
