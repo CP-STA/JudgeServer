@@ -29,7 +29,7 @@ class Configurations:
         "python3": {
             "compile": {
                 "src_name": "solution.py",
-                "exe_name": "__pycache__/solution.cpython-37.pyc",
+                "exe_name": "__pycache__/solution.cpython-36.pyc",
                 "max_cpu_time": default_cpu_time,
                 "max_real_time": default_real_time,
                 "max_memory": default_memory,
