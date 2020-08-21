@@ -6,7 +6,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.sql import text
 
 from grader.grader import Grader
-from grader.config import Configurations, OUTPUT_PATH, DATABASE_URI, COMPILER_USER_UID, RUN_GROUP_GID
+from grader.config import Configurations, WORKSPACE_PATH, DATABASE_URI, COMPILER_USER_UID, RUN_GROUP_GID
 from rq import get_current_job
 
 basedir = os.path.abspath(os.path.dirname(__file__))
@@ -27,7 +27,7 @@ engine = create_engine(DATABASE_URI, echo=True)
 """ Creates all the necessary directories to compile and execute the submitted code """
 class CreateEnvironment(object):
     def __init__(self, submission_id):
-        self.work_dir = os.path.join(OUTPUT_PATH, str(submission_id))
+        self.work_dir = os.path.join(WORKSPACE_PATH, str(submission_id))
     
     def __enter__(self):
         if os.path.exists(self.work_dir):
