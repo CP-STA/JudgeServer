@@ -18,6 +18,8 @@ RUN cd /tmp && git clone -b newnew --depth 1 https://github.com/QingdaoU/Judger 
 RUN apt-get purge -y --auto-remove $buildDeps
 RUN apt-get clean && rm -rf /var/lib/apt/lists/*
 
+RUN useradd -u 12001 compiler && useradd -u 12002 code
+
 COPY requirements.txt requirements.txt
 
 RUN pip3 install -r requirements.txt

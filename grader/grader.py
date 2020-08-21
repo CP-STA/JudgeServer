@@ -3,9 +3,7 @@ import _judger
 import hashlib
 import subprocess
 
-from grader.config import TESTCASE_PATH, OUTPUT_PATH, RESULT_COMPILATION_ERROR
-
-# TODO: ID and also need to give the user ID permission to read and modify the submission environment
+from grader.config import TESTCASE_PATH, OUTPUT_PATH, RESULT_COMPILATION_ERROR, COMPILER_USER_UID, COMPILER_GROUP_GID, COMPILER_LOG_PATH
 
 """Class responsible for sandboxed compilation and execution of submitted code."""
 class Grader(object):
@@ -36,10 +34,14 @@ class Grader(object):
     def _compile(self):
         config = self.config["compile"]
         exe_path = os.path.join(self.work_dir, config["exe_name"])
-        log_path = os.path.join(self.work_dir, "compiler.log")
+        compiler_out = os.path.join(self.work_dir, "compiler.log")
         
         # Setting up the compilation command
         command = config["compile_command"].format(src_path=self.src, exe_dir=self.work_dir, exe_path=exe_path).split(" ")
+
+        os.chdir(self.work_dir)
+        env = config.get("env", [])
+        env.append("PATH=" + os.getenv("PATH"))
 
         # Compile the source code
         result = _judger.run(max_cpu_time = config["max_cpu_time"],
@@ -51,19 +53,19 @@ class Grader(object):
 
                              exe_path = command[0],
                              input_path = self.src,
-                             output_path=log_path,
-                             error_path=log_path,
+                             output_path=compiler_out,
+                             error_path=compiler_out,
 
                              args=command[1::],
-                             env=["PATH=" + os.getenv("PATH")],
-                             log_path="judger.log",
+                             env=env,
+                             log_path=COMPILER_LOG_PATH,
                              seccomp_rule_name=None,
-
-                             # TODO: Be sure to setup correct user ID since executing code on root is very dangerous
-                             uid=0,
-                             gid=0)
+                             
+                             uid=COMPILER_USER_UID,
+                             gid=COMPILER_GROUP_GID)
         
-        os.remove(log_path)
+        # TODO: Probably a good idea to retun the compilation error somewhere if there is one!
+        os.remove(compiler_out)
         if result["result"] == _judger.RESULT_SUCCESS:
             return exe_path
         else:
@@ -106,8 +108,8 @@ class Grader(object):
                              seccomp_rule_name = config["seccomp_rule"],
  
                              # TODO: Again ID
-                             uid = 0,
-                             gid = 0,
+                             uid = RUN_USER_UID,
+                             gid = RUN_GROUP_GID,
  
                              memory_limit_check_only = config.get("memory_limit_check_only", 0),
                              input_path = input_path,
