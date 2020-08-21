@@ -6,7 +6,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.sql import text
 
 from grader.grader import Grader
-from grader.config import Configurations, OUTPUT_PATH, DATABASE_URI
+from grader.config import Configurations, OUTPUT_PATH, DATABASE_URI, COMPILER_USER_UID, RUN_GROUP_GID
 from rq import get_current_job
 
 basedir = os.path.abspath(os.path.dirname(__file__))
@@ -34,6 +34,9 @@ class CreateEnvironment(object):
             shutil.rmtree(self.work_dir)
 
         os.mkdir(self.work_dir)
+        os.chown(self.work_dir, COMPILER_USER_UID, RUN_GROUP_GID)
+        os.chmod(self.work_dir, 0o711)
+
         return self.work_dir
     
     def __exit__(self, a, b, c):
@@ -49,6 +52,9 @@ def evaluate_submission(submission_id, language, code, memory_limit, time_limit,
         # Saves submitted code to file
         with open(src, "w+") as f:
             f.write(code)
+        
+        os.chown(src, COMPILER_USER_UID, 0)
+        os.chmod(src, 0o400)
 
         grader = Grader(src, config, memory_limit, time_limit, problem_id, path, job)
         result = grader.grade_all()

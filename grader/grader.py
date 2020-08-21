@@ -3,7 +3,7 @@ import _judger
 import hashlib
 import subprocess
 
-from grader.config import TESTCASE_PATH, OUTPUT_PATH, RESULT_COMPILATION_ERROR, COMPILER_USER_UID, COMPILER_GROUP_GID, COMPILER_LOG_PATH
+from grader.config import TESTCASE_PATH, RESULT_COMPILATION_ERROR, COMPILER_USER_UID, COMPILER_GROUP_GID, COMPILER_LOG_PATH, JUDGER_RUN_LOG_PATH, RUN_USER_UID, RUN_GROUP_GID
 
 """Class responsible for sandboxed compilation and execution of submitted code."""
 class Grader(object):
@@ -67,6 +67,9 @@ class Grader(object):
         # TODO: Probably a good idea to retun the compilation error somewhere if there is one!
         os.remove(compiler_out)
         if result["result"] == _judger.RESULT_SUCCESS:
+            os.chown(exe_path, RUN_USER_UID, 0)
+            os.chmod(exe_path, 0o500)
+            
             return exe_path
         else:
             return None # Implies compilation error
@@ -104,10 +107,9 @@ class Grader(object):
                              exe_path = command[0],
                              args = command[1::],
                              env = ["PATH=" + os.environ.get("PATH", "")] + config.get("env", []),
-                             log_path = "judger.log",
+                             log_path = JUDGER_RUN_LOG_PATH,
                              seccomp_rule_name = config["seccomp_rule"],
  
-                             # TODO: Again ID
                              uid = RUN_USER_UID,
                              gid = RUN_GROUP_GID,
  

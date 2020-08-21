@@ -26,7 +26,6 @@ RUN pip3 install -r requirements.txt
 RUN mkdir tmp
 
 COPY grader grader
-COPY testcases testcases
 COPY server.py unbuffer.c boot.sh ./
 RUN chmod +x boot.sh
 

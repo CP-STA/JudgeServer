@@ -7,10 +7,17 @@ import grp
 
 RESULT_COMPILATION_ERROR = -3
 
-DATABASE_URI = os.environ.get('DATABASE_URL') or 'sqlite:///' + os.path.join(basedir, 'app.db')
+DATABASE_URI = os.environ.get('DATABASE_URL')
 
-TESTCASE_PATH = "testcases"
-OUTPUT_PATH = "/tmp"
+WORKSPACE_PATH = "/judger/run"
+
+# Testcases
+TESTCASE_PATH = "/testcases"
+
+# Path for logs
+LOG_BASE = "/log"
+COMPILER_LOG_PATH = os.path.join(LOG_BASE, "compile.log")
+JUDGER_RUN_LOG_PATH = os.path.join(LOG_BASE, "judger.log")
 
 RUN_USER_UID = pwd.getpwnam("code").pw_uid
 RUN_GROUP_GID = grp.getgrnam("code").gr_gid
@@ -18,13 +25,13 @@ RUN_GROUP_GID = grp.getgrnam("code").gr_gid
 COMPILER_USER_UID = pwd.getpwnam("compiler").pw_uid
 COMPILER_GROUP_GID = grp.getgrnam("compiler").gr_gid
 
-default_env = ["LANG=en_US.UTF-8", "LANGUAGE=en_US:en", "LC_ALL=en_US.UTF-8"]
-default_memory = 256 * 1024 * 1024
-default_cpu_time = 3000
-default_real_time = 5000
-
 """ Code compilation configurations for different languages """
 class Configurations:
+    default_env = ["LANG=en_US.UTF-8", "LANGUAGE=en_US:en", "LC_ALL=en_US.UTF-8"]
+    default_memory = 256 * 1024 * 1024
+    default_cpu_time = 3000
+    default_real_time = 5000
+
     configurations = {
         "python3": {
             "compile": {
