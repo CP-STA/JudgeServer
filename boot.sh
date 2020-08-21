@@ -1,5 +1,7 @@
 #!/bin/sh
 
+mkdir -p /judger/run
+
 chown compiler:code /judger/run
 chmod 711 /judger/run
 
