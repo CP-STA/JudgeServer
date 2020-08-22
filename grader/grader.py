@@ -67,8 +67,12 @@ class Grader(object):
         # TODO: Probably a good idea to retun the compilation error somewhere if there is one!
         os.remove(compiler_out)
         if result["result"] == _judger.RESULT_SUCCESS:
-            os.chown(exe_path, RUN_USER_UID, 0)
-            os.chmod(exe_path, 0o500)
+            # File path and execution path for Java is different.
+            try:
+                os.chown(exe_path, RUN_USER_UID, 0)
+                os.chmod(exe_path, 0o500)
+            except FileNotFoundError:
+                pass
             
             return exe_path
         else:
